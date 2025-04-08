@@ -8,6 +8,10 @@ import json
 import pandas as pd
 
 class DeclareDataset:
+    """
+    Dataset for iBCM and MINERFul
+    This class is used to load the dataset from a json file and convert it to a formagt readable by iBCM.
+    """
     def __init__(self, json_data_path):
         
         if json_data_path is None:
