@@ -49,6 +49,7 @@ class Evaluator(object):
 
         self.model_name = self.model.name
         self.eventlog_name = self.model.event_log_name
+        print(f"Loading model {self.model_name} for event log {self.eventlog_name}")
         self.process_model_name = self.model.model
         self.noise = self.model.p
         self.dataset_id = self.model.id

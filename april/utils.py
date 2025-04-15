@@ -317,3 +317,49 @@ def cd_plot(ranks, cd=None, lowv=None, highv=None, width=6, textspace=1, reverse
         start += 0.1
 
     return fig
+
+import sqlite3
+
+def delete_evaluation_and_model_tables(db_path):
+    """
+    Connects to a SQLite database and deletes all rows from 'Evaluation' and 'Model' tables.
+    
+    Parameters:
+        db_path (str): Path to the SQLite database file.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM Evaluation")
+        cursor.execute("DELETE FROM Model")
+        
+        conn.commit()
+        print("Deleted all rows from Evaluation and Model tables.")
+        
+    except sqlite3.Error as e:
+        print(f"An error occurred: {e}")
+        
+    finally:
+        if conn:
+            conn.close()
+
+import os
+
+def delete_all_files_in_folder(folder_path, include_subfolders=False):
+    """
+    Deletes all files in the specified folder.
+    
+    Parameters:
+        folder_path (str): The path to the folder.
+        include_subfolders (bool): If True, also deletes files in subdirectories.
+    """
+    if not os.path.isdir(folder_path):
+        raise ValueError(f"{folder_path} is not a valid directory.")
+    
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            os.remove(file_path)
+        if not include_subfolders:
+            break  # Prevents descending into subfolders if not wanted

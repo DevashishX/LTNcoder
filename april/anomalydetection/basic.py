@@ -53,10 +53,11 @@ class AnomalyDetector(object):
         self._model = None
         if model is not None:
             self.load(model)
+        self.model = self._model
 
-    @property
-    def model(self):
-        return self._model
+    # @property
+    # def model(self):
+    #     return self._model
 
     def load(self, file_name):
         """

@@ -47,10 +47,14 @@ class NNAnomalyDetector(AnomalyDetector):
         from april.anomalydetection.binet.attention import Attention
         with CustomObjectScope({'Attention': Attention}):
             self._model = load_model(file_name.str_path)
+        self.model = self._model
 
     def _save(self, file_name):
         print(file_name)
+        if self._model is not None:
+            self.model = self._model
         self.model.save(file_name)
+            
 
     @staticmethod
     def model_fn(dataset, **kwargs):

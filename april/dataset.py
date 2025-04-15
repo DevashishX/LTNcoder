@@ -31,6 +31,96 @@ from april.processmining.log import EventLog
 
 
 class Dataset(object):
+    """
+    Dataset Class
+    The `Dataset` class is designed to handle event log datasets for anomaly detection and predictive modeling tasks. 
+    It provides methods for loading, preprocessing, and accessing various features and labels of the dataset.
+    Attributes:
+        dataset_name (str): Name of the dataset.
+        go_backwards (bool): Whether to reverse the order of events in the dataset.
+        pad_mode (PadMode): Padding mode for sequences (PRE or POST).
+        attribute_types (list): Types of attributes in the dataset (e.g., categorical, numerical).
+        attribute_keys (list): Names of the attributes in the dataset.
+        classes (numpy.ndarray): Class labels for each case in the dataset.
+        labels (numpy.ndarray): Anomaly labels for each case in the dataset.
+        encoders (dict): Encoders for categorical attributes.
+        _mask (numpy.ndarray): Mask for padding sequences.
+        _attribute_dims (numpy.ndarray): Dimensionality of attributes.
+        _case_lens (numpy.ndarray): Length of each case in the dataset.
+        _features (list): Features of the dataset.
+        _event_log (EventLog): Event log object associated with the dataset.
+    Methods:
+        __init__(dataset_name=None, go_backwards=False, pad_mode=PadMode.POST):
+            Initializes the Dataset object and optionally loads a dataset.
+        load(dataset_name):
+            Loads a dataset from disk, either from a cache file or by processing an event log.
+        _load_dataset_from_cache(file):
+            Loads dataset features and labels from a cached file.
+        _cache_dataset(file):
+            Caches the dataset features and labels to a file.
+        from_event_log(event_log):
+            Processes an event log to extract features, labels, and other dataset properties.
+        _from_event_log(event_log, include_attributes=None):
+            Helper method to transform an event log into feature columns.
+        _get_classes_and_labels_from_event_log(event_log):
+            Extracts anomaly labels and transforms them into detection targets.
+        remove_time_dimension(x):
+            Flattens the time dimension of a tensor.
+    Properties:
+        mask:
+            Returns a boolean mask for padding sequences.
+        event_log:
+            Returns the event log object associated with the dataset.
+        binary_targets:
+            Returns binary anomaly detection targets (0 = normal, 1 = anomaly).
+        onehot_train_targets:
+            Returns one-hot encoded targets for training predictive anomaly detectors.
+        train_targets:
+            Returns targets for training predictive anomaly detectors.
+        pretty_labels:
+            Returns human-readable labels for the dataset.
+        text_labels:
+            Returns textual labels for each case in the dataset.
+        unique_text_labels:
+            Returns unique textual labels in the dataset.
+        unique_anomaly_text_labels:
+            Returns unique anomaly textual labels in the dataset.
+        get_indices_for_type(t):
+            Returns indices of cases with a specific label type.
+        normal_indices:
+            Returns indices of normal cases.
+        cf_anomaly_indices:
+            Returns indices of counterfactual anomaly cases.
+        anomaly_indices:
+            Returns indices of anomaly cases.
+        case_lens:
+            Returns the length of each case in the dataset.
+        attribute_dims:
+            Returns the dimensionality of attributes in the dataset.
+        num_attributes:
+            Returns the number of attributes in the dataset.
+        num_cases:
+            Returns the number of cases in the dataset.
+        num_events:
+            Returns the total number of events in the dataset.
+        max_len:
+            Returns the maximum length of cases in the dataset.
+        _reverse_features:
+            Returns reversed features for cases.
+        features:
+            Returns the features of the dataset, adjusted for padding and order.
+        flat_features:
+            Returns combined features in a single tensor.
+        onehot_features:
+            Returns one-hot encoded features for categorical attributes.
+        flat_onehot_features:
+            Returns combined one-hot encoded features in a single tensor.
+        flat_features_2d:
+            Returns 2D tensor of flat features.
+        flat_onehot_features_2d:
+            Returns 2D tensor of one-hot encoded features.
+    """
+    
     def __init__(self, dataset_name=None, go_backwards=False, pad_mode=PadMode.POST):
         # Public properties
         self.dataset_name = dataset_name

@@ -124,6 +124,7 @@ class EventLog(Base):
         eventlog_id = None
         if len(ids) > 0:
             eventlog_id = ids[0]
+        print(f"Eventlog id for {name} is {eventlog_id}")
         return eventlog_id
 
 
@@ -144,6 +145,7 @@ class ProcessMap(Base):
 
 
 class Evaluation(Base):
+    print("Creating Evaluation table")
     __tablename__ = 'Evaluation'
 
     # Keys
