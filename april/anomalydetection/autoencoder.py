@@ -40,6 +40,8 @@ else:
 # from keras.optimizers import Adam
 import ltn
 
+def flatten_iterable(iterable):
+    return list(itertools.chain.from_iterable(iterable))
 class DAE(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
@@ -54,7 +56,7 @@ class DAE(NNAnomalyDetector):
     supported_bases = [Base.LEGACY, Base.SCORES]
     supports_attributes = True
 
-    config = dict(hidden_layers=2,
+    config = dict(hidden_layers=3,
                   hidden_size_factor=.2,
                   noise=None)
 
@@ -178,7 +180,7 @@ class DAELTN(NNAnomalyDetector):
     supported_bases = [Base.LEGACY, Base.SCORES]
     supports_attributes = True
 
-    config = dict(hidden_layers=2,
+    config = dict(hidden_layers=3,
                   hidden_size_factor=.2,
                   noise=None)
 
@@ -282,10 +284,10 @@ class DAELTN(NNAnomalyDetector):
                 sub_model = Model(inputs=self._model.input, outputs=sliced_output, name=model_name)
                 sub_model.compile(optimizer=Adam(learning_rate=0.0001, beta_2=0.99), loss='mean_squared_error')
                 sub_predicate = ltn.Predicate.FromLogits(sub_model, activation_function="softmax", with_class_indexing=True)
-                self.individual_models.append(sub_model)
+                # self.individual_models.append(sub_model)
                 # self.individual_models_trainable_parameters.append(sub_model.trainable_variables)
                 self.individual_predicates.append(sub_predicate)
-                self.individual_predicates_trainable_parameters.append(sub_predicate.trainable_variables)
+                # self.individual_predicates_trainable_parameters.append(sub_predicate.trainable_variables)
                 if name == "name":
                     self.activity_predicates.append(sub_predicate)
                 elif name == "user":
@@ -295,7 +297,7 @@ class DAELTN(NNAnomalyDetector):
 
         # self.individual_predicates_trainable_parameters = self.individual_predicates_trainable_parameters[0]
         # print(self.individual_predicates_trainable_parameters)# Just for now
-        self.individual_predicates_trainable_parameters = list(itertools.chain.from_iterable(self.individual_predicates_trainable_parameters))
+        # self.all_trainable_parameters = flatten_iterable(self.individual_predicates_trainable_parameters)
         
         return self.individual_models, self.individual_predicates
 
@@ -332,10 +334,21 @@ class DAELTN(NNAnomalyDetector):
             axioms = [
                 Forall(traces, self.activity_predicates[0]([traces, self.activity_constants["▶"]], training=training))           
             ]
-            for i in range(1, len(self.activity_predicates)):
-                axioms.append(
-                    Forall(traces, Not(self.activity_predicates[i]([traces, self.activity_constants["▶"]], training=training)))
-                )
+            for constant_key, constant in self.activity_constants.items():
+                if constant_key != "▶":
+                    axioms.append(
+                        Forall(traces, 
+                               Not(
+                                   self.activity_predicates[0](
+                                       [traces, constant], training=training
+                                       )
+                                   )
+                               )
+                        )
+            # for i in range(1, len(self.activity_predicates)):
+            #     axioms.append(
+            #         Forall(traces, Not(self.activity_predicates[i]([traces, self.activity_constants["▶"]], training=training)))
+            #     )
             sat_level = formula_aggregator(axioms).tensor
             return sat_level
         
@@ -369,8 +382,10 @@ class DAELTN(NNAnomalyDetector):
             with tf.GradientTape() as tape:
                 sat = self.axioms(features, labels, training=True)
                 loss = 1.-sat
-            gradients = tape.gradient(loss, self.individual_predicates_trainable_parameters)
-            self.train_optimizer.apply_gradients(zip(gradients, self.individual_predicates_trainable_parameters))
+            # gradients = tape.gradient(loss, self._model.trainable_variables)
+            # self.train_optimizer.apply_gradients(zip(gradients, self._model.trainable_variables))
+            gradients = tape.gradient(loss, self.individual_predicates[0].trainable_variables)            
+            self.train_optimizer.apply_gradients(zip(gradients, self.individual_predicates[0].trainable_variables))
             sat = self.axioms(features, labels) # compute sat without dropout
             self.metrics_dict['train_sat_kb'](sat)
             
@@ -412,7 +427,7 @@ class DAELTN(NNAnomalyDetector):
             for metrics in self.metrics_dict.values():
                 metrics.reset_states()
 
-            for batch_elements in ds_train:
+            for batch_elements in ds_test:
                 train_step(*batch_elements)
                 # train_step(*batch_elements, axioms, self.individual_predicates_trainable_parameters, **scheduled_parameters[epoch])
             for batch_elements in ds_test:
