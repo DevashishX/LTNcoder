@@ -259,7 +259,7 @@ class DAELTN(NNAnomalyDetector):
         self.individual_predicates_trainable_parameters = []
         self.activity_predicates = []
         self.user_predicates = []
-        self.model_optimizer = Adam(learning_rate=0.0001, beta_2=0.99)
+        self.individul_model_optimizer = Adam(learning_rate=0.0001, beta_2=0.99)
         while offset < total_output_dim:
             for dim, name in zip(dataset.attribute_dims.astype(int), dataset.attribute_keys):
                 if offset + dim > total_output_dim:
@@ -271,7 +271,7 @@ class DAELTN(NNAnomalyDetector):
                 # Create a model with a custom name
                 model_name = f"{name}_{block_count}"
                 sub_model = Model(inputs=self._model.input, outputs=sliced_output, name=model_name)
-                sub_model.compile(optimizer=self.model_optimizer, loss='mean_squared_error')
+                sub_model.compile(optimizer=self.individul_model_optimizer, loss='mean_squared_error')
                 sub_predicate = ltn.Predicate.FromLogits(sub_model, activation_function="softmax", with_class_indexing=True)
                 # self.individual_models.append(sub_model)
                 # self.individual_models_trainable_parameters.append(sub_model.trainable_variables)
@@ -512,7 +512,7 @@ class DAELTNFROZEN(DAELTN):
             
         # Recompile with original settings (preserves loss/metrics)
         self._model.compile(
-            optimizer=self.model_optimizer,
+            optimizer=Adam(learning_rate=0.0001, beta_2=0.99), # this optimizer doesnt  matter right  now because LTN training has its own optimizer
             loss=self._model.loss,
             metrics=self._model.metrics
         )

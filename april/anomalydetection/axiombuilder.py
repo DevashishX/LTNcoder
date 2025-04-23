@@ -91,11 +91,11 @@ class AxiomBuilder:
     
     def _exclusive_choice(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
         formula = Or(
-            Or(
+            And(
                 self._existence(activity_constant_key_a, traces, training),
                 self._absence(activity_constant_key_b, traces, training)
             ),
-            Or(
+            And(
                 self._absence(activity_constant_key_a, traces, training),
                 self._existence(activity_constant_key_b, traces, training)
             )
