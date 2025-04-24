@@ -49,16 +49,16 @@ class AxiomBuilder:
 
         """
         self.axioms = []
-        self.axioms.append(self.existence("▶", traces, training))
-        self.axioms.append(self.choice("Pay", "Release PO", traces, training))
-        # Choice[Approve PO 1, Pay] | |
-        self.axioms.append(self.choice("Approve PO 1", "Pay", traces, training))
-        # Choice[Create PO, Post GR] | |
-        self.axioms.append(self.choice("Create PO", "Post GR", traces, training))
-        # Not Response[Pay, Create SC] | |
-        self.axioms.append(self.not_response("Pay", "Create SC", traces, training))
-        # Responded Existence[Create PO, Pay] | |	0.0092	0.9908
-        self.axioms.append(self.responded_existence("Create PO", "Pay", traces, training))
+        
+        # Responded Existence[Develop Method, Final Decision] | |
+        # self.axioms.append(self.responded_existence("Develop Method", "Final Decision", traces, training))
+        # Response[Develop Method, Final Decision] | |
+        self.axioms.append(self.response("Develop Method", "Final Decision", traces, training))
+        # Chain Precedence[Research Related Work, Develop Method] | |
+        # self.axioms.append(self.chain_precedence("Research Related Work", "Develop Method", traces, training))
+        # Chain Response[Develop Method, Experiment] | |
+        # self.axioms.append(self.chain_response("Develop Method", "Experiment", traces, training))
+
         return self.axioms
     
     def _existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -67,6 +67,7 @@ class AxiomBuilder:
     
     def existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._existence(activity_constant_key, traces, training))
+        tf.print(f"Built forall existence({activity_constant_key})")
         return formula
     
     def _absence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -76,6 +77,7 @@ class AxiomBuilder:
     
     def absence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._absence(activity_constant_key, traces, training))
+        tf.print(f"Built forall absence({activity_constant_key})")
         return formula
     
     def _choice(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -87,6 +89,7 @@ class AxiomBuilder:
     
     def choice(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._choice(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall choice({activity_constant_key_a}, {activity_constant_key_b})")
         return formula
     
     def _exclusive_choice(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -104,6 +107,7 @@ class AxiomBuilder:
     
     def exclusive_choice(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._exclusive_choice(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall exclusive_choice({activity_constant_key_a}, {activity_constant_key_b})")
         return formula
     
     def _responded_existence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
@@ -115,6 +119,7 @@ class AxiomBuilder:
     
     def responded_existence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._responded_existence(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall responded_existence({activity_constant_key_a}, {activity_constant_key_b})")
         return formula
     
     # def _responded_existence(self, activity_constant_key_a:str, activity_constant_key_b:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -159,6 +164,7 @@ class AxiomBuilder:
     
     def response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         formula = Forall(traces, self._response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall response({activity_constant_key_a}, {activity_constant_key_b})")
         return formula
         
 
@@ -210,7 +216,9 @@ class AxiomBuilder:
         return MultiAnd(*implications)
     
     def alternate_response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        return Forall(traces, self._alternate_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        formula = Forall(traces, self._alternate_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall alternate_response({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
 
 
     def _chain_response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
@@ -239,8 +247,39 @@ class AxiomBuilder:
         return MultiAnd(*implications)
     
     def chain_response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        return Forall(traces, self._chain_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        formula =  Forall(traces, self._chain_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall chain_response({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
 
+    def _chain_precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+        """
+        For every i in [1, n-1]: B_i ⇒ A_{i-1}
+        """
+        # Step 1: Cache all predicate evaluations
+        a_preds = [
+            self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key_a]], training=training)
+            for i in range(self.total_activity_predicates)
+        ]
+        b_preds = [
+            self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key_b]], training=training)
+            for i in range(self.total_activity_predicates)
+        ]
+
+        implications = []
+
+        # Start from i = 1 because we check i and i-1
+        for i in range(1, self.total_activity_predicates):
+            b_i = b_preds[i]
+            a_prev = a_preds[i - 1]
+            implication = Implies(b_i, a_prev)
+            implications.append(implication)
+
+        return MultiAnd(*implications)
+    
+    def chain_precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+        formula = Forall(traces, self._chain_precedence(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall chain_precedence({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
 
     def _precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         """
@@ -274,7 +313,9 @@ class AxiomBuilder:
         return MultiAnd(*implications)    
     
     def precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        return Forall(traces, self._precedence(activity_constant_key_a, activity_constant_key_b, traces, training))     
+        formula = Forall(traces, self._precedence(activity_constant_key_a, activity_constant_key_b, traces, training))     
+        tf.print(f"Built forall precedence({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
     
     def _not_response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         """
@@ -309,7 +350,9 @@ class AxiomBuilder:
         return MultiAnd(*constraints)
     
     def not_response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        return Forall(traces, self._not_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        formula = Forall(traces, self._not_response(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall not_response({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
     
     def _not_precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         """
@@ -341,7 +384,10 @@ class AxiomBuilder:
         return MultiAnd(*constraints)
 
     def not_precedence(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        return Forall(traces, self._not_precedence(activity_constant_key_a, activity_constant_key_b, traces, training))
+        formula = Forall(traces, self._not_precedence(activity_constant_key_a, activity_constant_key_b, traces, training))
+        tf.print(f"Built forall not_precedence({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
+    
     
     def _build_test_axiom(self, activity_constant_key:str, traces:ltn.Variable, training):
         axioms = []
@@ -359,4 +405,5 @@ class AxiomBuilder:
                                    )
                                )
                         )
+        tf.print(f"Built test axiom for {activity_constant_key}")
         return axioms

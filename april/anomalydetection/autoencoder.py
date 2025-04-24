@@ -15,10 +15,12 @@
 # ==============================================================================
 
 import itertools
+import pickle
 import numpy as np
 
 from april.anomalydetection.binet.core import NNAnomalyDetector
 from april.anomalydetection.utils.result import AnomalyDetectionResult
+from april.dataset import Dataset
 from april.enums import Base
 from april.enums import Heuristic
 from april.enums import Mode
@@ -354,7 +356,61 @@ class DAELTN(NNAnomalyDetector):
     #     self.axioms = axioms
     #     return self.axioms
 
-    def _split_dataset_2d(self, dataset, batch_size, sample_dataset:float=0.2):
+    def _split_dataset_for_LTN(self, dataset: Dataset):
+        """
+        Remove non-anomalous common rows from the dataset and return two subsets.
+        
+        Args:
+            dataset: The original dataset.
+        
+        Returns:
+            x_one_hot_2d: Rows in dataset.flat_onehot_features_2d without the indexes in common_rows.
+            x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in common_rows.
+        """
+        # Load the common rows from the pickle file
+        with open('common_rows.pkl', 'rb') as f:
+            common_rows = pickle.load(f)
+        
+        # Remove anomaly_indices from common_rows
+        common_rows = [i for i in common_rows if i not in dataset.anomaly_indices]
+        
+        # Create masks for rows to include and exclude
+        all_indices = set(range(len(dataset.flat_onehot_features_2d)))
+        non_common_rows = list(all_indices - set(common_rows))
+        
+        # Subset the dataset
+        x_one_hot_2d = dataset.flat_onehot_features_2d[non_common_rows]
+        x_one_hot_2d_LTN = dataset.flat_onehot_features_2d[common_rows]
+        
+        return x_one_hot_2d, x_one_hot_2d_LTN
+
+    # def _split_dataset_2d(self, dataset:Dataset, batch_size):
+    #     """
+    #     Create train and test datasets from the original dataset.
+    #     Args:
+    #         dataset: The original dataset.
+    #         batch_size: int, size of the mini-batch.
+    #         sample_dataset: float, fraction of the dataset to sample.
+    #     """
+    #     # import the pickle module, read a pickle file named common_rows.pkl into a list and subeset the dataset using the list as indexes
+    #     with open('common_rows.pkl', 'rb') as f:
+    #         common_rows = pickle.load(f)
+    #     # remove anomaly_indices from common_rows using dataset.anomaly_indices
+    #     common_rows = [i for i in common_rows if i not in dataset.anomaly_indices]
+    #     x_one_hot_2d = dataset.flat_onehot_features_2d[common_rows]
+    #     permuted_indices = np.random.permutation(x_one_hot_2d.shape[0])
+    #     x_one_hot_2d = x_one_hot_2d[permuted_indices]
+    #     tf.print("Size of LTN training dataset: ", x_one_hot_2d.shape[0])
+    #     # sample x_one_hot_2d into a smaller dataset of sample_dataset fraction
+    #     # x_one_hot_2d = x_one_hot_2d[np.random.choice(x_one_hot_2d.shape[0], int(x_one_hot_2d.shape[0] * sample_dataset), replace=False)]
+    #     split_point = int(x_one_hot_2d.shape[0] * 0.9 )
+    #     x_one_hot_2d_train = x_one_hot_2d[:split_point]
+    #     x_one_hot_2d_test = x_one_hot_2d[split_point:]
+    #     ds_train = tf.data.Dataset.from_tensor_slices((x_one_hot_2d_train,x_one_hot_2d_train)).batch(batch_size)
+    #     ds_test = tf.data.Dataset.from_tensor_slices((x_one_hot_2d_test,x_one_hot_2d_test)).batch(batch_size)
+    #     return ds_train, ds_test
+
+    def _split_dataset_2d(self, x_one_hot_2d, batch_size):
         """
         Create train and test datasets from the original dataset.
         Args:
@@ -362,11 +418,13 @@ class DAELTN(NNAnomalyDetector):
             batch_size: int, size of the mini-batch.
             sample_dataset: float, fraction of the dataset to sample.
         """
-        permuted_indices = np.random.permutation(dataset.flat_onehot_features_2d.shape[0])
-        x_one_hot_2d = dataset.flat_onehot_features_2d[permuted_indices]
+        
+        permuted_indices = np.random.permutation(x_one_hot_2d.shape[0])
+        x_one_hot_2d = x_one_hot_2d[permuted_indices]
+        tf.print("Size of LTN training dataset: ", x_one_hot_2d.shape[0])
         # sample x_one_hot_2d into a smaller dataset of sample_dataset fraction
-        x_one_hot_2d = x_one_hot_2d[np.random.choice(x_one_hot_2d.shape[0], int(x_one_hot_2d.shape[0] * sample_dataset), replace=False)]
-        split_point = int(x_one_hot_2d.shape[0] * 0.8 )
+        # x_one_hot_2d = x_one_hot_2d[np.random.choice(x_one_hot_2d.shape[0], int(x_one_hot_2d.shape[0] * sample_dataset), replace=False)]
+        split_point = int(x_one_hot_2d.shape[0] * 0.9 )
         x_one_hot_2d_train = x_one_hot_2d[:split_point]
         x_one_hot_2d_test = x_one_hot_2d[split_point:]
         ds_train = tf.data.Dataset.from_tensor_slices((x_one_hot_2d_train,x_one_hot_2d_train)).batch(batch_size)
@@ -378,7 +436,7 @@ class DAELTN(NNAnomalyDetector):
             'train_sat_kb': tf.keras.metrics.Mean(name='train_sat_kb'),
             'test_sat_kb': tf.keras.metrics.Mean(name='test_sat_kb')
         }
-        self.ltn_optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001, beta_2=0.99)
+        self.ltn_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001, beta_2=0.99)
         
         @tf.function
         def train_step(features, labels):
@@ -403,19 +461,24 @@ class DAELTN(NNAnomalyDetector):
 
     def fit(self, dataset, epochs=20, batch_size=100, validation_split=0.2, epochs_ltn=5, **kwargs):
         # Build model
-        self._model, features, targets = self.model_fn(dataset, **self.config)
+        normal_dataset_flat_one_hot_2d, ltn_dataset_flat_one_hot_2d = self._split_dataset_for_LTN(dataset)
+        tf.print("Size of Normal training dataset: ", normal_dataset_flat_one_hot_2d.shape[0])
+        tf.print("Size of LTN training dataset: ", ltn_dataset_flat_one_hot_2d.shape[0])
+        
+        # self._model, features, targets = self.model_fn(dataset, **self.config)
+        self._model, _, _ = self.model_fn(dataset, **self.config)
 
         # Train model
         self.history = self._model.fit(
-            features,
-            targets,
+            normal_dataset_flat_one_hot_2d,
+            normal_dataset_flat_one_hot_2d,
             batch_size=batch_size,
             epochs=epochs,
             validation_split=validation_split,
             **kwargs
         )
         
-        ds_train, ds_test = self._split_dataset_2d(dataset, batch_size)
+        ds_train, ds_test = self._split_dataset_2d(ltn_dataset_flat_one_hot_2d, batch_size)
         self._build_individual_models(dataset)
         self._build_ltn_constants(dataset)
         axioms = self._build_ltn_axioms()
@@ -432,8 +495,8 @@ class DAELTN(NNAnomalyDetector):
 
             for batch_elements in ds_train:
                 train_step(*batch_elements)
-            for batch_elements in ds_test:
-                test_step(*batch_elements)
+            # for batch_elements in ds_test:
+            #     test_step(*batch_elements)
             metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
             # if epoch%track_metrics == 0:
             print(template.format(epoch,*metrics_results))
@@ -493,13 +556,20 @@ class DAELTNFROZEN(DAELTN):
         super(DAELTNFROZEN, self).__init__(model=model)
 
     def fit(self, dataset, epochs=20, batch_size=100, validation_split=0.2, epochs_ltn=5, **kwargs):
+        
+        normal_dataset_flat_one_hot_2d, ltn_dataset_flat_one_hot_2d = self._split_dataset_for_LTN(dataset)
+        tf.print("Size of normal training dataset: ", normal_dataset_flat_one_hot_2d.shape[0])
+        tf.print("Size of LTN training dataset: ", ltn_dataset_flat_one_hot_2d.shape[0])
+        
         # Build model
-        self._model, features, targets = self.model_fn(dataset, **self.config)
+        # self._model, features, targets = self.model_fn(dataset, **self.config)
+        self._model, _, _ = self.model_fn(dataset, **self.config)
+        
 
         # Train model
         self.history = self._model.fit(
-            features,
-            targets,
+            normal_dataset_flat_one_hot_2d,
+            normal_dataset_flat_one_hot_2d,
             batch_size=batch_size,
             epochs=epochs,
             validation_split=validation_split,
@@ -517,7 +587,7 @@ class DAELTNFROZEN(DAELTN):
             metrics=self._model.metrics
         )
         
-        ds_train, ds_test = self._split_dataset_2d(dataset, batch_size)
+        ds_train, ds_test = self._split_dataset_2d(ltn_dataset_flat_one_hot_2d, batch_size)
         self._build_individual_models(dataset)
         self._build_ltn_constants(dataset)
         axioms = self._build_ltn_axioms()
@@ -535,8 +605,8 @@ class DAELTNFROZEN(DAELTN):
             for batch_elements in ds_train:
                 train_step(*batch_elements)
                 # train_step(*batch_elements, axioms, self.individual_predicates_trainable_parameters, **scheduled_parameters[epoch])
-            for batch_elements in ds_test:
-                test_step(*batch_elements)
+            # for batch_elements in ds_test:
+            #     test_step(*batch_elements)
                 # test_step(*batch_elements, axioms, **scheduled_parameters[epoch])
             metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
             # if epoch%track_metrics == 0:
