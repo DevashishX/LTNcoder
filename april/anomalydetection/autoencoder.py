@@ -42,6 +42,8 @@ else:
 # from keras.models import Model
 # from keras.optimizers import Adam
 import ltn
+formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
+
 
 def flatten_iterable(iterable):
     return list(itertools.chain.from_iterable(iterable))
@@ -307,54 +309,28 @@ class DAELTN(NNAnomalyDetector):
         return self.activity_constants, self.user_constants
 
     def _build_ltn_axioms(self):
-        """Generate LTN axioms function for the model.
+        """
+        Generate and compile LTN axioms function for the model.
+
+        This method ensures that the axioms are compiled only once and reused during training.
 
         Returns:
-            axioms: tf.function that takes features and labels as input and returns the satisfaction level of the axioms.
+            axioms_fn: A precompiled TensorFlow function that evaluates the satisfaction level of the axioms.
         """
+        # Initialize the AxiomBuilder with predicates and constants
         self.axiombuilder = AxiomBuilder(self.activity_predicates, self.activity_constants)
-        self.axioms = self.axiombuilder.build_axiom_fn()
-        return self.axioms
 
-    # def _build_ltn_axioms(self):
-    #     """Generate LTN axioms function for the model.
+        # Build the axioms once and store them
+        @tf.function
+        def axioms_fn(features, labels=None, training=False):
+            traces = ltn.Variable("traces", features)
+            axioms = self.axiombuilder._build_axioms(traces, training=training)
+            sat_level = formula_aggregator(axioms).tensor
+            return sat_level
 
-    #     Returns:
-    #         axioms: tf.function that takes features and labels as input and returns the satisfaction level of the axioms.
-    #     """
-    #     Not = ltn.Wrapper_Connective(ltn.fuzzy_ops.Not_Std())
-    #     And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
-    #     Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
-    #     Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
-    #     Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=2),semantics="forall")
-    #     formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
-        
-    #     @tf.function
-    #     def axioms(features, labels=None, training=False):
-    #         traces = ltn.Variable("traces", features)
-    #         axioms = [
-    #             Forall(traces, self.activity_predicates[0]([traces, self.activity_constants["▶"]], training=training))           
-    #         ]
-    #         for constant_key, constant in self.activity_constants.items():
-    #             if constant_key != "▶":
-    #                 axioms.append(
-    #                     Forall(traces, 
-    #                            Not(
-    #                                self.activity_predicates[0](
-    #                                    [traces, constant], training=training
-    #                                    )
-    #                                )
-    #                            )
-    #                     )
-    #         # for i in range(1, len(self.activity_predicates)):
-    #         #     axioms.append(
-    #         #         Forall(traces, Not(self.activity_predicates[i]([traces, self.activity_constants["▶"]], training=training)))
-    #         #     )
-    #         sat_level = formula_aggregator(axioms).tensor
-    #         return sat_level
-        
-    #     self.axioms = axioms
-    #     return self.axioms
+        # Store the compiled axioms function
+        self.axioms_fn = axioms_fn
+        return self.axioms_fn
 
     def _split_dataset_for_LTN(self, dataset: Dataset):
         """
@@ -383,32 +359,6 @@ class DAELTN(NNAnomalyDetector):
         x_one_hot_2d_LTN = dataset.flat_onehot_features_2d[common_rows]
         
         return x_one_hot_2d, x_one_hot_2d_LTN
-
-    # def _split_dataset_2d(self, dataset:Dataset, batch_size):
-    #     """
-    #     Create train and test datasets from the original dataset.
-    #     Args:
-    #         dataset: The original dataset.
-    #         batch_size: int, size of the mini-batch.
-    #         sample_dataset: float, fraction of the dataset to sample.
-    #     """
-    #     # import the pickle module, read a pickle file named common_rows.pkl into a list and subeset the dataset using the list as indexes
-    #     with open('common_rows.pkl', 'rb') as f:
-    #         common_rows = pickle.load(f)
-    #     # remove anomaly_indices from common_rows using dataset.anomaly_indices
-    #     common_rows = [i for i in common_rows if i not in dataset.anomaly_indices]
-    #     x_one_hot_2d = dataset.flat_onehot_features_2d[common_rows]
-    #     permuted_indices = np.random.permutation(x_one_hot_2d.shape[0])
-    #     x_one_hot_2d = x_one_hot_2d[permuted_indices]
-    #     tf.print("Size of LTN training dataset: ", x_one_hot_2d.shape[0])
-    #     # sample x_one_hot_2d into a smaller dataset of sample_dataset fraction
-    #     # x_one_hot_2d = x_one_hot_2d[np.random.choice(x_one_hot_2d.shape[0], int(x_one_hot_2d.shape[0] * sample_dataset), replace=False)]
-    #     split_point = int(x_one_hot_2d.shape[0] * 0.9 )
-    #     x_one_hot_2d_train = x_one_hot_2d[:split_point]
-    #     x_one_hot_2d_test = x_one_hot_2d[split_point:]
-    #     ds_train = tf.data.Dataset.from_tensor_slices((x_one_hot_2d_train,x_one_hot_2d_train)).batch(batch_size)
-    #     ds_test = tf.data.Dataset.from_tensor_slices((x_one_hot_2d_test,x_one_hot_2d_test)).batch(batch_size)
-    #     return ds_train, ds_test
 
     def _split_dataset_2d(self, x_one_hot_2d, batch_size):
         """
@@ -439,21 +389,28 @@ class DAELTN(NNAnomalyDetector):
         self.ltn_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001, beta_2=0.99)
         
         @tf.function
-        def train_step(features, labels):
+        def train_step(features, labels, axioms_fn):
             with tf.GradientTape() as tape:
-                sat = self.axioms(features, labels, training=True)
-                loss = 1.-sat
-            # gradients = tape.gradient(loss, self._model.trainable_variables)
-            # self.ltn_train_optimizer.apply_gradients(zip(gradients, self._model.trainable_variables))
-            gradients = tape.gradient(loss, self.individual_predicates[0].trainable_variables)            
+                sat = axioms_fn(features, labels, training=True)
+                loss = 1.0 - sat
+
+            gradients = tape.gradient(loss, self.individual_predicates[0].trainable_variables)
             self.ltn_optimizer.apply_gradients(zip(gradients, self.individual_predicates[0].trainable_variables))
-            sat = self.axioms(features, labels, training=False) # compute sat without dropout
+            sat = axioms_fn(features, labels, training=False)  # Compute satisfaction without dropout
             self.metrics_dict['train_sat_kb'](sat)
-            
+        
         @tf.function
-        def test_step(features, labels):
-            # sat
-            sat = self.axioms(features, labels, training=False)
+        def test_step(features, labels, axioms_fn):
+            """
+            Evaluate the satisfaction level of the axioms on the test dataset.
+
+            Args:
+                features: Input features for the test dataset.
+                labels: Labels for the test dataset (not used in this case).
+                axioms_fn: Precompiled TensorFlow function for evaluating axioms.
+            """
+            # Compute satisfaction level without training mode (no dropout, etc.)
+            sat = axioms_fn(features, labels, training=False)
             self.metrics_dict['test_sat_kb'](sat)
         
         return train_step, test_step    
@@ -465,7 +422,6 @@ class DAELTN(NNAnomalyDetector):
         tf.print("Size of Normal training dataset: ", normal_dataset_flat_one_hot_2d.shape[0])
         tf.print("Size of LTN training dataset: ", ltn_dataset_flat_one_hot_2d.shape[0])
         
-        # self._model, features, targets = self.model_fn(dataset, **self.config)
         self._model, _, _ = self.model_fn(dataset, **self.config)
 
         # Train model
@@ -481,7 +437,7 @@ class DAELTN(NNAnomalyDetector):
         ds_train, ds_test = self._split_dataset_2d(ltn_dataset_flat_one_hot_2d, batch_size)
         self._build_individual_models(dataset)
         self._build_ltn_constants(dataset)
-        axioms = self._build_ltn_axioms()
+        axioms_fn = self._build_ltn_axioms()  # Compile axioms once
         train_step, test_step = self._build_train_test_steps()
         
         # Train LTN model
@@ -494,14 +450,14 @@ class DAELTN(NNAnomalyDetector):
                 metrics.reset_states()
 
             for batch_elements in ds_train:
-                train_step(*batch_elements)
-            # for batch_elements in ds_test:
-            #     test_step(*batch_elements)
-            metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
-            # if epoch%track_metrics == 0:
-            print(template.format(epoch,*metrics_results))
+                train_step(*batch_elements, axioms_fn)
 
-        
+            for batch_elements in ds_test:
+                test_step(*batch_elements, axioms_fn)
+
+            metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
+            print(template.format(epoch, *metrics_results))
+
         return self.history
 
     def detect(self, dataset):
@@ -556,17 +512,24 @@ class DAELTNFROZEN(DAELTN):
         super(DAELTNFROZEN, self).__init__(model=model)
 
     def fit(self, dataset, epochs=20, batch_size=100, validation_split=0.2, epochs_ltn=5, **kwargs):
+        """
+        Train the DAELTNFROZEN model with both normal and LTN datasets.
         
+        Args:
+            dataset: The dataset to train on.
+            epochs: Number of epochs for the normal training phase.
+            batch_size: Batch size for training.
+            validation_split: Fraction of the dataset to use for validation.
+            epochs_ltn: Number of epochs for the LTN training phase.
+            **kwargs: Additional arguments for the training process.
+        """
+        # Split dataset into normal and LTN subsets
         normal_dataset_flat_one_hot_2d, ltn_dataset_flat_one_hot_2d = self._split_dataset_for_LTN(dataset)
         tf.print("Size of normal training dataset: ", normal_dataset_flat_one_hot_2d.shape[0])
         tf.print("Size of LTN training dataset: ", ltn_dataset_flat_one_hot_2d.shape[0])
         
-        # Build model
-        # self._model, features, targets = self.model_fn(dataset, **self.config)
+        # Build and train the main model
         self._model, _, _ = self.model_fn(dataset, **self.config)
-        
-
-        # Train model
         self.history = self._model.fit(
             normal_dataset_flat_one_hot_2d,
             normal_dataset_flat_one_hot_2d,
@@ -576,41 +539,44 @@ class DAELTNFROZEN(DAELTN):
             **kwargs
         )
         
-        # Freeze all layers except last
+        # Freeze all layers except the last one
         for layer in self._model.layers[:-1]:
             layer.trainable = False
-            
-        # Recompile with original settings (preserves loss/metrics)
+        
+        # Recompile the model (optimizer here is irrelevant for LTN training)
         self._model.compile(
-            optimizer=Adam(learning_rate=0.0001, beta_2=0.99), # this optimizer doesnt  matter right  now because LTN training has its own optimizer
+            optimizer=Adam(learning_rate=0.0001, beta_2=0.99),
             loss=self._model.loss,
             metrics=self._model.metrics
         )
         
+        # Prepare LTN training
         ds_train, ds_test = self._split_dataset_2d(ltn_dataset_flat_one_hot_2d, batch_size)
         self._build_individual_models(dataset)
         self._build_ltn_constants(dataset)
-        axioms = self._build_ltn_axioms()
+        axioms_fn = self._build_ltn_axioms()  # Compile axioms once
         train_step, test_step = self._build_train_test_steps()
         
-        # Train LTN model
+        # Train the LTN model
         template = "Epoch {}"
         for metrics_label in self.metrics_dict.keys():
             template += ", %s: {:.4f}" % metrics_label
         
         for epoch in range(epochs_ltn):
+            # Reset metrics at the start of each epoch
             for metrics in self.metrics_dict.values():
                 metrics.reset_states()
 
+            # Train on the training dataset
             for batch_elements in ds_train:
-                train_step(*batch_elements)
-                # train_step(*batch_elements, axioms, self.individual_predicates_trainable_parameters, **scheduled_parameters[epoch])
-            # for batch_elements in ds_test:
-            #     test_step(*batch_elements)
-                # test_step(*batch_elements, axioms, **scheduled_parameters[epoch])
-            metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
-            # if epoch%track_metrics == 0:
-            print(template.format(epoch,*metrics_results))
+                train_step(*batch_elements, axioms_fn)
 
+            # Evaluate on the test dataset
+            for batch_elements in ds_test:
+                test_step(*batch_elements, axioms_fn)
+
+            # Log metrics for the epoch
+            metrics_results = [metrics.result() for metrics in self.metrics_dict.values()]
+            print(template.format(epoch, *metrics_results))
         
         return self.history
