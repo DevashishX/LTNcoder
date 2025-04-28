@@ -66,18 +66,7 @@ class DAE(NNAnomalyDetector):
                   noise=None)
 
     def __init__(self, model=None):
-        """Initialize DAE model.
-
-        Size of hidden layers is based on input size. The size can be controlled via the hidden_size_factor parameter.
-        This can be float or a list of floats (where len(hidden_size_factor) == hidden_layers). The input layer size is
-        multiplied by the respective factor to get the hidden layer size.
-
-        :param model: Path to saved model file. Defaults to None.
-        :param hidden_layers: Number of hidden layers. Defaults to 2.
-        :param hidden_size_factor: Size factors for hidden layer base don input layer size.
-        :param epochs: Number of epochs to train.
-        :param batch_size: Mini batch size.
-        """
+        """Initialize DAE model."""
         super(DAE, self).__init__(model=model)
 
     @staticmethod
@@ -86,14 +75,24 @@ class DAE(NNAnomalyDetector):
         from keras.layers import Input, Dense, Dropout, GaussianNoise
         from keras.models import Model
         from keras.optimizers import Adam
+        import pickle
 
+        # Load ltn rows
+        with open('ltn_rows.pkl', 'rb') as f:
+            ltn_rows = pickle.load(f)
+            print(ltn_rows)
+            print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
+
+        # Filter out rows in ltn_rows
+        all_indices = set(range(len(dataset.flat_onehot_features_2d)))
+        non_ltn_rows = sorted(list(all_indices - set(ltn_rows)))
+        features = dataset.flat_onehot_features_2d[non_ltn_rows]
+        print(f"Length of training features: {len(features)}")
+
+        # Parameters
         hidden_layers = kwargs.pop('hidden_layers')
         hidden_size_factor = kwargs.pop('hidden_size_factor')
         noise = kwargs.pop('noise')
-
-        features = dataset.flat_onehot_features_2d
-
-        # Parameters
         input_size = features.shape[1]
 
         # Input layer
@@ -121,7 +120,6 @@ class DAE(NNAnomalyDetector):
 
         # Compile model
         model.compile(
-            # optimizer=Adam(lr=0.0001, beta_2=0.99),
             optimizer=Adam(learning_rate=0.0001, beta_2=0.99),
             loss='mean_squared_error',
             metrics=['accuracy']
@@ -129,7 +127,8 @@ class DAE(NNAnomalyDetector):
 
         return model, features, features  # Features are also targets
 
-    def detect(self, dataset):
+    def detect(self, dataset:Dataset):
+        print("In DAE Detect")
         """
         Calculate the anomaly score for each event attribute in each trace.
         Anomaly score here is the mean squared error.
@@ -141,7 +140,9 @@ class DAE(NNAnomalyDetector):
 
         """
         # Get features
-        _, features, _ = self.model_fn(dataset, **self.config)
+        # _, features, _ = self.model_fn(dataset, **self.config)
+        features = dataset.flat_onehot_features_2d
+        print(f"Length of features in detect loaded directly from dataset: {len(features)}")
 
         # Parameters
         input_size = int(self.model.input.shape[1])
@@ -334,29 +335,29 @@ class DAELTN(NNAnomalyDetector):
 
     def _split_dataset_for_LTN(self, dataset: Dataset):
         """
-        Remove non-anomalous common rows from the dataset and return two subsets.
+        Remove non-anomalous ltn rows from the dataset and return two subsets.
         
         Args:
             dataset: The original dataset.
         
         Returns:
-            x_one_hot_2d: Rows in dataset.flat_onehot_features_2d without the indexes in common_rows.
-            x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in common_rows.
+            x_one_hot_2d: Rows in dataset.flat_onehot_features_2d without the indexes in ltn_rows.
+            x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in ltn_rows.
         """
-        # Load the common rows from the pickle file
-        with open('common_rows.pkl', 'rb') as f:
-            common_rows = pickle.load(f)
+        # Load the ltn rows from the pickle file
+        with open('ltn_rows.pkl', 'rb') as f:
+            ltn_rows = pickle.load(f)
         
-        # Remove anomaly_indices from common_rows
-        common_rows = [i for i in common_rows if i not in dataset.anomaly_indices]
+        # Remove anomaly_indices from ltn_rows
+        # ltn_rows = [i for i in ltn_rows if i not in dataset.anomaly_indices]
         
         # Create masks for rows to include and exclude
         all_indices = set(range(len(dataset.flat_onehot_features_2d)))
-        non_common_rows = list(all_indices - set(common_rows))
+        non_ltn_rows = list(all_indices - set(ltn_rows))
         
         # Subset the dataset
-        x_one_hot_2d = dataset.flat_onehot_features_2d[non_common_rows]
-        x_one_hot_2d_LTN = dataset.flat_onehot_features_2d[common_rows]
+        x_one_hot_2d = dataset.flat_onehot_features_2d[non_ltn_rows]
+        x_one_hot_2d_LTN = dataset.flat_onehot_features_2d[ltn_rows]
         
         return x_one_hot_2d, x_one_hot_2d_LTN
 
@@ -472,7 +473,9 @@ class DAELTN(NNAnomalyDetector):
 
         """
         # Get features
-        _, features, _ = self.model_fn(dataset, **self.config)
+        # _, features, _ = self.model_fn(dataset, **self.config)
+        features = dataset.flat_onehot_features_2d
+        print(f"Length of features in detect loaded directly from dataset: {len(features)}")
 
         # Parameters
         input_size = int(self.model.input.shape[1])

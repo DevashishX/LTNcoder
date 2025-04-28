@@ -62,6 +62,10 @@ class Evaluator(object):
         self._event_log_df = None
         self._classification = None
 
+        # Load ltn rows
+        with open('ltn_rows.pkl', 'rb') as f:
+            self.ltn_rows = pickle.load(f)
+
         import warnings
         warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
@@ -98,8 +102,28 @@ class Evaluator(object):
     @property
     def dataset(self):
         if self._dataset is None:
-            self._dataset = Dataset(self.eventlog_name)
+            full_dataset = Dataset(self.eventlog_name)
+            # Filter the dataset to include only rows in ltn_rows
+            self._dataset = self._filter_dataset(full_dataset)
         return self._dataset
+
+    def _filter_dataset(self, full_dataset):
+        """
+        Filter the dataset to include only rows whose indices are in ltn_rows.
+        """
+        all_indices = set(range(len(full_dataset.flat_onehot_features_2d)))
+        common_indices = sorted(list(all_indices.intersection(self.ltn_rows)))
+        print(f"Filtering dataset to {len(common_indices)} LTN rows.")
+        print(f"Indices: {common_indices}")
+
+        # Subset the dataset
+        filtered_dataset = full_dataset
+        filtered_dataset._features = [f[common_indices] for f in full_dataset._features]
+        filtered_dataset.labels = full_dataset.labels[common_indices]
+        filtered_dataset.classes = full_dataset.classes[common_indices]
+        filtered_dataset._case_lens = full_dataset._case_lens[common_indices]
+
+        return filtered_dataset
 
     @property
     def binarizer(self):
