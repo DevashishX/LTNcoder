@@ -201,8 +201,8 @@ class Dataset(object):
         if self.classes is not None and len(self.classes) > 0:
             targets = np.copy(self.classes)
             targets[targets > Class.ANOMALY] = Class.ANOMALY
-            print(f"self.class shape: {self.classes.shape}")
-            print(f"BInary targets shape: {targets.shape}")
+            print(f"Evaluuation dataset shape: {self.classes.shape}")
+            # print(f"BInary targets shape: {targets.shape}")
             return targets
         return None
 

@@ -78,7 +78,7 @@ class DAE(NNAnomalyDetector):
         import pickle
 
         # Load ltn rows
-        with open('ltn_rows.pkl', 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             ltn_rows = pickle.load(f)
             print(ltn_rows)
             print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
@@ -345,7 +345,7 @@ class DAELTN(NNAnomalyDetector):
             x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in ltn_rows.
         """
         # Load the ltn rows from the pickle file
-        with open('ltn_rows.pkl', 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             ltn_rows = pickle.load(f)
         
         # Remove anomaly_indices from ltn_rows

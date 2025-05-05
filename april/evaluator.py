@@ -63,7 +63,7 @@ class Evaluator(object):
         self._classification = None
 
         # Load ltn rows
-        with open('ltn_rows.pkl', 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             self.ltn_rows = pickle.load(f)
 
         import warnings

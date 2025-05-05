@@ -33,8 +33,10 @@ from april.fs import ModelFile
 Base = declarative_base()
 
 
-def get_engine():
-    return create_engine(f'sqlite+pysqlite:///{DATABASE_FILE}')
+def get_engine(database=None):
+    if database is None:
+        database = DATABASE_FILE
+    return create_engine(f'sqlite+pysqlite:///{database}')
 
 
 class Model(Base):
