@@ -1,22 +1,7 @@
-# Copyright 2018 Timo Nolle
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-# ==============================================================================
-
 import pickle
 import sys
 import numpy as np
+np.random.seed(0)
 
 from april.anomalydetection.binet.core import NNAnomalyDetector
 from april.anomalydetection.utils.result import AnomalyDetectionResult
@@ -40,14 +25,17 @@ if len(physical_devices) > 0:
 import ltn
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
 
-ltn_class_row_values = [10, 25] + list(range(50, 401, 50))
-ltn_row_classes = []
+paper_ltn_class_row_values = [10, 25] + list(range(50, 401, 50))
+paper_ltn_row_classes = []
+paper_leaky_class_row_values = [10, 25] + list(range(50, 401, 50))
+paper_leaky_row_classes = []
 
 class PaperDAE(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
     abbreviation = 'paperdae'
     name = 'PaperDAE'
+    leaky_ltn_rows = 0 # leaked rows from the LTN dataset
 
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
                             Heuristic.LP_LEFT, Heuristic.LP_MEAN, Heuristic.LP_RIGHT,
@@ -65,8 +53,8 @@ class PaperDAE(NNAnomalyDetector):
         """Initialize DAE model."""
         super(PaperDAE, self).__init__(model=model)
 
-    @staticmethod
-    def model_fn(dataset, **kwargs):
+    @classmethod
+    def model_fn(cls, dataset, **kwargs):
         # Import keras locally
         from keras.layers import Input, Dense, Dropout, GaussianNoise
         from keras.models import Model
@@ -78,6 +66,14 @@ class PaperDAE(NNAnomalyDetector):
             ltn_rows = pickle.load(f)
             # print(ltn_rows)
             # print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
+
+        # use the leaky_ltn_rows to reduce the number of rows in ltn_rows
+        if cls.leaky_ltn_rows > 0:
+            # remove sampled leaky_ltn_rows from ltn_rows
+            # ltn_rows = np.random.choice(ltn_rows, len(ltn_rows) - cls.leaky_ltn_rows, replace=False)
+            # just remove the leaky_ltn_rows from ltn_rows
+            ltn_rows = ltn_rows[:-cls.leaky_ltn_rows]
+            print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
 
         # Filter out rows in ltn_rows
         all_indices = set(range(len(dataset.flat_onehot_features_2d)))
@@ -600,10 +596,28 @@ def create_ltn_classes(base_class, row_values, target_module):
             }
         )
         setattr(target_module, class_name, new_class)  # Register to actual module
-        ltn_row_classes.append(new_class)
+        paper_ltn_row_classes.append(new_class)
 
+# Factory function to create and register classes globally
+def create_leaky_classes(base_class, leaky_values, target_module):
+    for leaky in leaky_values:
+        class_name = f"{base_class.__name__}-Leaky-{leaky}"
+        new_class = type(
+            class_name,
+            (base_class,),
+            {
+                '__doc__': f"Implements a denoising autoencoder based anomaly detection algorithm with leaked {leaky} rows of LTN training data.",
+                'abbreviation': f'{base_class.__name__.lower()}-leaky-{leaky}',
+                'name': f'{base_class.__name__}-Leaky-{leaky}',
+                'leaky_ltn_rows': leaky
+            }
+        )
+        setattr(target_module, class_name, new_class)  # Register to actual module
+        paper_leaky_row_classes.append(new_class)
 # Create and register the classes
-create_ltn_classes(PaperLTNFROZEN, ltn_class_row_values, sys.modules[__name__])
+create_ltn_classes(PaperLTNFROZEN, paper_ltn_class_row_values, sys.modules[__name__])
+create_leaky_classes(PaperDAE, paper_leaky_class_row_values, sys.modules[__name__])
+
 
 
 # class PaperLTNFROZEN_25(PaperLTNFROZEN):

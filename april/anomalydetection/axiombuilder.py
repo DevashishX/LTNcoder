@@ -50,6 +50,7 @@ class AxiomBuilder:
         """
         axioms = []
         
+        # Paper Axioms
         # Responded Existence[Develop Method, Final Decision] | |
         # self.axioms.append(self.responded_existence("Develop Method", "Final Decision", traces, training))
         # Response[Develop Method, Final Decision] | |
@@ -58,6 +59,11 @@ class AxiomBuilder:
         # self.axioms.append(self.chain_precedence("Research Related Work", "Develop Method", traces, training))
         # Chain Response[Develop Method, Experiment] | |
         # self.axioms.append(self.chain_response("Develop Method", "Experiment", traces, training))
+
+        #BPIC12 Axioms
+        # Precedence[W_Completeren aanvraag+START, A_CANCELLED+COMPLETE] | |
+        # axioms.append(self.precedence("W_Completeren aanvraag+START", "A_CANCELLED+COMPLETE", traces, training))
+
 
         return axioms
     
