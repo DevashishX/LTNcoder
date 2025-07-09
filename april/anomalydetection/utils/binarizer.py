@@ -15,7 +15,7 @@
 # ==============================================================================
 
 import numpy as np
-
+from april.anomalydetection.utils.result import AnomalyDetectionResult
 from april.anomalydetection.utils import label_collapse
 from april.anomalydetection.utils import max_collapse
 from april.anomalydetection.utils.heuristic import best_heuristic
@@ -29,7 +29,10 @@ from april.enums import Strategy
 
 
 class Binarizer(object):
-    def __init__(self, result, mask, features, targets=None):
+    def __init__(self, result: AnomalyDetectionResult, mask, features, targets=None):
+        
+        print(f"Result in Binarizer.__init__: {result.predictions}")
+        
         self.result = result
         self._mask = mask
         self.mask_ = mask
@@ -203,6 +206,7 @@ class Binarizer(object):
     def binarize(self, scores=None, tau=None, base=None, heuristic=None, strategy=None, go_backwards=False,
                  return_parameters=False, axis=2, heuristic_axis=None):
 
+        print(f"Scores in Binarizer.binarize: {scores} and shape: {scores.shape if scores is not None else 'None'}")
         if heuristic_axis is None:
             heuristic_axis = axis
 
@@ -211,10 +215,11 @@ class Binarizer(object):
                 scores = self.result.scores_backward
             else:
                 scores = self.result.scores
+                print(f"Using result.scores: {scores} and shape: {scores.shape}")
 
         if not isinstance(scores, np.ma.MaskedArray):
             scores = self.mask(scores)
-
+        print(f"Masked scores in Binarizer.binarize: {scores} and shape: {scores.shape}")   
         # Get baseline threshold (tau in the paper)
         if tau is None or heuristic != Heuristic.MANUAL:
             if base == Base.LEGACY:

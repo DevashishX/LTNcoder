@@ -54,7 +54,7 @@ class AxiomBuilder:
         # Responded Existence[Develop Method, Final Decision] | |
         # self.axioms.append(self.responded_existence("Develop Method", "Final Decision", traces, training))
         # Response[Develop Method, Final Decision] | |
-        axioms.append(self.response("Develop Method", "Final Decision", traces, training))
+        # axioms.append(self.response("Develop Method", "Final Decision", traces, training))
         # Chain Precedence[Research Related Work, Develop Method] | |
         # self.axioms.append(self.chain_precedence("Research Related Work", "Develop Method", traces, training))
         # Chain Response[Develop Method, Experiment] | |
@@ -63,8 +63,10 @@ class AxiomBuilder:
         #BPIC12 Axioms
         # Precedence[W_Completeren aanvraag+START, A_CANCELLED+COMPLETE] | |
         # axioms.append(self.precedence("W_Completeren aanvraag+START", "A_CANCELLED+COMPLETE", traces, training))
-
-
+        
+        #P2P Axioms
+        #Response[Approve PO 2, Release PO]
+        axioms.append(self.response("Approve PO 2", "Release PO", traces, training))
         return axioms
     
     def _existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:

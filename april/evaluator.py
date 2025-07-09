@@ -49,7 +49,7 @@ class Evaluator(object):
 
         self.model_name = self.model.name
         self.eventlog_name = self.model.event_log_name
-        print(f"Loading model {self.model_name} for event log {self.eventlog_name}")
+        print(f"Loading model {self.model_name} for event log {self.eventlog_name} from {self.model_file}")
         self.process_model_name = self.model.model
         self.noise = self.model.p
         self.dataset_id = self.model.id
@@ -63,7 +63,9 @@ class Evaluator(object):
         self._classification = None
 
         # Load ltn rows
-        with open('paper_ltn_rows.pkl', 'rb') as f:
+        # with open('paper_ltn_rows.pkl', 'rb') as f:        
+        # with open('bpic12_ltn_rows.pkl', 'rb') as f:
+        with open("p2p_ltn_rows.pkl", 'rb') as f:
             self.ltn_rows = pickle.load(f)
 
         import warnings
@@ -76,6 +78,7 @@ class Evaluator(object):
 
     @staticmethod
     def _load_result_from_cache(file):
+        print(f"Loading cached result from {file}")
         return pickle.load(gzip.open(file, 'rb'))
 
     def cache_result(self):

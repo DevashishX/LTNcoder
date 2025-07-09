@@ -1,0 +1,2 @@
+axis,ad,process_model,dataset_name,f1,precision,recall
+Case,Bpic12DAE,BPIC12,bpic12-0.3-1,0.20779220779220778,1.0,0.11594202898550725

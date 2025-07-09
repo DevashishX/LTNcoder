@@ -15,6 +15,8 @@
 # ==============================================================================
 
 from april.dataset import Dataset
+# from april.evaluator import Evaluator
+# from april.custom_evaluator import Evaluator
 from april.evaluator import Evaluator
 from april.fs import generate as generate_folders
 from april.generation import EventLogGenerator
