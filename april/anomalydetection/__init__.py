@@ -18,9 +18,15 @@ import inspect
 import sys
 
 from april.anomalydetection.autoencoder import *
-from april.anomalydetection.paperencoder import *
-from april.anomalydetection.bpic12encoder import *
-from april.anomalydetection.p2pencoder import *
+# from april.anomalydetection.paperencoder import *
+# from april.anomalydetection.bpic12encoder import *
+# from april.anomalydetection.p2pencoder import *
+# from april.anomalydetection.testencoder import *
+from april.anomalydetection.smallencoder import *
+# from april.anomalydetection.mediumencoder import *
+
+
+
 # from april.anomalydetection.p2pdaeltn import *
 from april.anomalydetection.basic import *
 from april.anomalydetection.bezerra import *

@@ -8,6 +8,10 @@ And = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_Prod())
 Or = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSum())
 MultiAnd = ltn.Wrapper_Connective(ltn.fuzzy_ops.And_ProdMulti())
 MultiOr = ltn.Wrapper_Connective(ltn.fuzzy_ops.Or_ProbSumMulti())
+BigAnd = ltn.Wrapper_Connective(ltn.fuzzy_ops.Connective_Adapter(ltn.fuzzy_ops.And_ProdBig()))
+BigOr = ltn.Wrapper_Connective(ltn.fuzzy_ops.Connective_Adapter(ltn.fuzzy_ops.Or_ProbSumBig()))
+AggregateAnd = ltn.Wrapper_Connective(ltn.fuzzy_ops.Connective_Adapter(ltn.fuzzy_ops.Aggreg_pMeanError(p=5)))
+AggregateOr = ltn.Wrapper_Connective(ltn.fuzzy_ops.Connective_Adapter(ltn.fuzzy_ops.Aggreg_pMean(p=5)))
 Implies = ltn.Wrapper_Connective(ltn.fuzzy_ops.Implies_Reichenbach())
 Forall = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMeanError(p=4),semantics="forall")
 Exists = ltn.Wrapper_Quantifier(ltn.fuzzy_ops.Aggreg_pMean(p=5),semantics="exists")
@@ -66,11 +70,30 @@ class AxiomBuilder:
         
         #P2P Axioms
         #Response[Approve PO 2, Release PO]
-        axioms.append(self.response("Approve PO 2", "Release PO", traces, training))
+        # axioms.append(self.response("Approve PO 2", "Release PO", traces, training))
+        
+        #test Axioms
+        #Response[Approve PO 2, Release PO]
+        # axioms.append(self.response("Approve PO 2", "Release PO", traces, training))
+        
+        # Test Big operators version
+        # axioms.append(self.response_big("Approve PO 2", "Release PO", traces, training))
+        
+        # Test Aggregate operators version
+        # axioms.append(self.response_aggregate("Approve PO 2", "Release PO", traces, training))
+        
+        # Small dataset
+        # "Responded Existence[Activity M, Activity F] | |"
+        # axioms.append(self.responded_existence("Activity M", "Activity F", traces, training))
+        
+        # medium dataset
+        # Responded Existence[Activity H, Activity B]
+        axioms.append(self.responded_existence("Activity H", "Activity B", traces, training))
+        
         return axioms
     
     def _existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
-        formula = MultiOr(*[self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key]], training=training) for i in range(self.total_activity_predicates)])
+        formula = BigOr(*[self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key]], training=training) for i in range(self.total_activity_predicates)])
         return formula
     
     def existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:
@@ -141,9 +164,44 @@ class AxiomBuilder:
     #     formula = None # TODO: Implement this function using above description
     #     return formula
     
-    def _response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+    # def _response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+    #     """
+    #     If activity A occurs at position i, then activity B must occur at some position j >= i.
+        
+    #     ∀i: pred_i(trace, A) ⇒ ∃j≥i: pred_j(trace, B)
+    #     """
+    #     formulas = []
+
+    #     for i in range(self.total_activity_predicates):
+    #         # Predicate for activity A at position i
+    #         pred_a_i = self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key_a]], training=training)
+
+    #         # All B predicates from position i onward
+    #         future_preds_b = [
+    #             self.activity_predicates[j]([traces, self.activity_constants[activity_constant_key_b]], training=training)
+    #             for j in range(i, self.total_activity_predicates)
+    #         ]
+
+    #         # ∃j ≥ i: pred_j(trace, B)
+    #         exists_b = MultiOr(*future_preds_b)
+
+    #         # pred_i(trace, A) ⇒ ∃j ≥ i: pred_j(trace, B)
+    #         implication = Implies(pred_a_i, exists_b)
+
+    #         formulas.append(implication)
+
+    #     # ∀trace: all implications across positions
+    #     return MultiAnd(*formulas)
+    
+    def response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+        formula = Forall(traces, self._response_big(activity_constant_key_a, activity_constant_key_b, traces, training))
+        print(f"Built forall response({activity_constant_key_a}, {activity_constant_key_b})")
+        return formula
+    
+    def _response_big(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
         """
         If activity A occurs at position i, then activity B must occur at some position j >= i.
+        Uses Big operators for more efficient computation.
         
         ∀i: pred_i(trace, A) ⇒ ∃j≥i: pred_j(trace, B)
         """
@@ -159,20 +217,55 @@ class AxiomBuilder:
                 for j in range(i, self.total_activity_predicates)
             ]
 
-            # ∃j ≥ i: pred_j(trace, B)
-            exists_b = MultiOr(*future_preds_b)
+            # ∃j ≥ i: pred_j(trace, B) using BigOr
+            exists_b = BigOr(*future_preds_b)
 
             # pred_i(trace, A) ⇒ ∃j ≥ i: pred_j(trace, B)
             implication = Implies(pred_a_i, exists_b)
 
             formulas.append(implication)
 
-        # ∀trace: all implications across positions
-        return MultiAnd(*formulas)
+        # ∀trace: all implications across positions using BigAnd
+        return BigAnd(*formulas)
     
-    def response(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
-        formula = Forall(traces, self._response(activity_constant_key_a, activity_constant_key_b, traces, training))
-        print(f"Built forall response({activity_constant_key_a}, {activity_constant_key_b})")
+    # def response_big(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+    #     formula = Forall(traces, self._response_big(activity_constant_key_a, activity_constant_key_b, traces, training))
+    #     print(f"Built forall response_big({activity_constant_key_a}, {activity_constant_key_b})")
+    #     return formula
+    
+    def _response_aggregate(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+        """
+        If activity A occurs at position i, then activity B must occur at some position j >= i.
+        Uses Aggregate operators (pMean aggregation).
+        
+        ∀i: pred_i(trace, A) ⇒ ∃j≥i: pred_j(trace, B)
+        """
+        formulas = []
+
+        for i in range(self.total_activity_predicates):
+            # Predicate for activity A at position i
+            pred_a_i = self.activity_predicates[i]([traces, self.activity_constants[activity_constant_key_a]], training=training)
+
+            # All B predicates from position i onward
+            future_preds_b = [
+                self.activity_predicates[j]([traces, self.activity_constants[activity_constant_key_b]], training=training)
+                for j in range(i, self.total_activity_predicates)
+            ]
+
+            # ∃j ≥ i: pred_j(trace, B) using AggregateOr
+            exists_b = AggregateOr(*future_preds_b)
+
+            # pred_i(trace, A) ⇒ ∃j ≥ i: pred_j(trace, B)
+            implication = Implies(pred_a_i, exists_b)
+
+            formulas.append(implication)
+
+        # ∀trace: all implications across positions using AggregateAnd
+        return AggregateAnd(*formulas)
+    
+    def response_aggregate(self, activity_constant_key_a: str, activity_constant_key_b: str, traces: ltn.Variable, training) -> ltn.core.Formula:
+        formula = Forall(traces, self._response_aggregate(activity_constant_key_a, activity_constant_key_b, traces, training))
+        print(f"Built forall response_aggregate({activity_constant_key_a}, {activity_constant_key_b})")
         return formula
         
 
