@@ -88,8 +88,28 @@ class AxiomBuilder:
         
         # medium dataset
         # Responded Existence[Activity H, Activity B]
-        axioms.append(self.responded_existence("Activity H", "Activity B", traces, training))
+        # axioms.append(self.responded_existence("Activity H", "Activity B", traces, training))
         
+        # large dataset
+        # Responded Existence[Activity U, Activity B]
+        # axioms.append(self.responded_existence("Activity U", "Activity B", traces, training))
+        
+        # huge dataset
+        # Responded Existence[Activity AM, Activity B]
+        # axioms.append(self.responded_existence("Activity AD", "Activity B", traces, training))
+        
+        # gigantic dataset
+        # Responded Existence[Activity BJ, Activity B]
+        # axioms.append(self.responded_existence("Activity BZ", "Activity A", traces, training))
+        
+        # wide dataset
+        # Responded Existence[Activity Q, Activity O]
+        # axioms.append(self.responded_existence("Activity Q", "Activity O", traces, training))
+        
+        # bpic13 dataset
+        # Responded Existence[Accepted+Wait, Completed+Closed]
+        axioms.append(self.responded_existence("Accepted+Wait", "Completed+Closed", traces, training))
+
         return axioms
     
     def _existence(self, activity_constant_key:str, traces:ltn.Variable, training) -> ltn.core.Formula:

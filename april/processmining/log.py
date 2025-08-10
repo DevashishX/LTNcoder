@@ -62,7 +62,8 @@ class EventLog(object):
         if 'global_attributes' in self.attributes.keys() and 'event' in self.attributes['global_attributes'].keys():
             ignored = ['concept:name', 'time:timestamp', 'lifecycle:transition', 'EventID', 'activityNameEN',
                        'activityNameNL', 'dateFinished', 'question', 'product', 'EventOrigin', 'Action',
-                       'organization involved', 'impact']
+                       'organization involved', 'impact', "org:group", "org:role", "organization country",
+                       "resource country", ]
 
             attributes += sorted(
                 [key for key in self.attributes['global_attributes']['event'].keys() if key not in ignored])
@@ -86,6 +87,7 @@ class EventLog(object):
         if attributes is None:
             attributes = self.event_attribute_keys
         attribute_types = []  # name is always categorical
+        print(f"Eventlog Attributes: {attributes}")
         for a in attributes:
             if a == 'name':
                 a = self.cases[0][0].name
