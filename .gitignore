@@ -160,3 +160,6 @@ cython_debug/
 paper3.1_conformance_results.pkl
 bpic12_5000_conformance_results.pkl
 *.pkl
+/.out/.cache
+/.out/models
+/.out/models
