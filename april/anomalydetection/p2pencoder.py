@@ -27,10 +27,10 @@ formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanEr
 
 
 # enocder_event_log_name = "p2p"
-p2p_ltn_class_row_values = [10, 25] + list(range(50, 351, 50))
+p2p_ltn_class_row_values = [10, 25] + list(range(50, 301, 50))
 # p2p_ltn_class_row_values = [10, 25]
 p2p_ltn_row_classes = []
-p2p_leaky_class_row_values = [10, 25] + list(range(50, 351, 50))
+p2p_leaky_class_row_values = [10, 25] + list(range(50, 301, 50))
 # p2p_leaky_class_row_values = [10, 25]
 p2p_leaky_row_classes = []
 

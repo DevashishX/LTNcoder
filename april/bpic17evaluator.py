@@ -38,7 +38,7 @@ from april.processmining import Case
 from april.processmining import Event
 from april.processmining.log import EventLog
 
-eval_ltn_rows_file = 'paper_ltn_rows.pkl'
+eval_ltn_rows_file = 'bpic17_ltn_rows.pkl'
 class Evaluator(object):
     def __init__(self, model):
         if not isinstance(model, ModelFile):

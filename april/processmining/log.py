@@ -63,7 +63,7 @@ class EventLog(object):
             ignored = ['concept:name', 'time:timestamp', 'lifecycle:transition', 'EventID', 'activityNameEN',
                        'activityNameNL', 'dateFinished', 'question', 'product', 'EventOrigin', 'Action',
                        'organization involved', 'impact', "org:group", "org:role", "organization country",
-                       "resource country", ]
+                       "resource country", "org:resource"]
 
             attributes += sorted(
                 [key for key in self.attributes['global_attributes']['event'].keys() if key not in ignored])

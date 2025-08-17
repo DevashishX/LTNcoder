@@ -25,19 +25,16 @@ if len(physical_devices) > 0:
 import ltn
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
 
-ltn_rows_file = 'bpic13_ltn_rows.pkl'
-bpic13_ltn_class_row_values = [10, 25] + list(range(50, 301, 50))
-# bpic13_ltn_class_row_values = [10, 25]
-bpic13_ltn_row_classes = []
-bpic13_leaky_class_row_values = [10, 25] + list(range(50, 301, 50))
-# bpic13_leaky_class_row_values = [10, 25]
-bpic13_leaky_row_classes = []
+paper_ltn_class_row_values = [10, 25] + list(range(50, 401, 50))
+paper_ltn_row_classes = []
+paper_leaky_class_row_values = [10, 25] + list(range(50, 401, 50))
+paper_leaky_row_classes = []
 
-class Bpic13DAE(NNAnomalyDetector):
+class PaperDAE(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'bpic13dae'
-    name = f'Bpic13DAE'
+    abbreviation = 'paperdae'
+    name = 'PaperDAE'
     leaky_ltn_rows = 0 # leaked rows from the LTN dataset
 
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
@@ -54,7 +51,7 @@ class Bpic13DAE(NNAnomalyDetector):
 
     def __init__(self, model=None):
         """Initialize DAE model."""
-        super(Bpic13DAE, self).__init__(model=model)
+        super(PaperDAE, self).__init__(model=model)
 
     @classmethod
     def model_fn(cls, dataset, **kwargs):
@@ -65,7 +62,7 @@ class Bpic13DAE(NNAnomalyDetector):
         import pickle
 
         # Load ltn rows
-        with open(ltn_rows_file, 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             ltn_rows = pickle.load(f)
             # print(ltn_rows)
             # print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
@@ -166,12 +163,12 @@ class Bpic13DAE(NNAnomalyDetector):
 
         return AnomalyDetectionResult(scores=scores)
 
-class Bpic13LTN(NNAnomalyDetector):
+class PaperLTN(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'Bpic13ltn'
-    name = f'Bpic13LTN'
-    ltn_rows = 351 # rows to use for LTN training
+    abbreviation = 'paperltn'
+    name = 'PaperLTN'
+    ltn_rows = 500 # rows to use for LTN training
     # ltn_fraction = 1.0 # fraction of the dataset to use for LTN training
     
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
@@ -187,7 +184,7 @@ class Bpic13LTN(NNAnomalyDetector):
                   noise=None)
 
     def __init__(self, model=None):
-        super(Bpic13LTN, self).__init__(model=model)
+        super(PaperLTN, self).__init__(model=model)
 
     @staticmethod
     def model_fn(dataset, **kwargs):
@@ -259,7 +256,7 @@ class Bpic13LTN(NNAnomalyDetector):
         self.individual_predicates = []
         self.individual_predicates_trainable_parameters = []
         self.activity_predicates = []
-        # self.user_predicates = []
+        self.user_predicates = []
         self.individul_model_optimizer = Adam(learning_rate=0.0001, beta_2=0.99)
         while offset < total_output_dim:
             for dim, name in zip(dataset.attribute_dims.astype(int), dataset.attribute_keys):
@@ -280,8 +277,8 @@ class Bpic13LTN(NNAnomalyDetector):
                 # self.individual_predicates_trainable_parameters.append(sub_predicate.trainable_variables)
                 if name == "name":
                     self.activity_predicates.append(sub_predicate)
-                # elif name == "user":
-                #     self.user_predicates.append(sub_predicate)
+                elif name == "user":
+                    self.user_predicates.append(sub_predicate)
                 offset += dim
             block_count += 1
 
@@ -298,14 +295,12 @@ class Bpic13LTN(NNAnomalyDetector):
         dataset_activity_mapping = dict(zip(dataset.encoders["name"].classes_, dataset.encoders["name"].transform(dataset.encoders["name"].classes_)))
         for name, mapping in dataset_activity_mapping.items():
             dataset_activity_mapping[name] = ltn.Constant(mapping, trainable=False)
-        # dataset_user_mapping = dict(zip(dataset.encoders["user"].classes_, dataset.encoders["user"].transform(dataset.encoders["user"].classes_)))
-        # for user, mapping in dataset_user_mapping.items():
-        #     dataset_user_mapping[user] = ltn.Constant(mapping, trainable=False)
-        # print(f"Activity constants: {dataset_activity_mapping}")
-        # print(f"User constants: {dataset_user_mapping}")
+        dataset_user_mapping = dict(zip(dataset.encoders["user"].classes_, dataset.encoders["user"].transform(dataset.encoders["user"].classes_)))
+        for user, mapping in dataset_user_mapping.items():
+            dataset_user_mapping[user] = ltn.Constant(mapping, trainable=False)
         self.activity_constants = dataset_activity_mapping
-        # self.user_constants = dataset_user_mapping
-        return self.activity_constants#, self.user_constants
+        self.user_constants = dataset_user_mapping
+        return self.activity_constants, self.user_constants
 
     def _build_ltn_axioms(self):
         """
@@ -343,7 +338,7 @@ class Bpic13LTN(NNAnomalyDetector):
             x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in ltn_rows.
         """
         # Load the ltn rows from the pickle file
-        with open(ltn_rows_file, 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             ltn_rows = pickle.load(f)
         
         # Remove anomaly_indices from ltn_rows
@@ -506,14 +501,14 @@ class Bpic13LTN(NNAnomalyDetector):
 
         return AnomalyDetectionResult(scores=scores)
 
-class Bpic13LTNFROZEN(Bpic13LTN):
+class PaperLTNFROZEN(PaperLTN):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'bpic13ltnfrozen'
-    name = f'Bpic13LTNFROZEN'
+    abbreviation = 'paperltnfrozen'
+    name = 'PaperLTNFROZEN'
 
     def __init__(self, model=None):
-        super(Bpic13LTNFROZEN, self).__init__(model=model)
+        super(PaperLTNFROZEN, self).__init__(model=model)
 
     def fit(self, dataset, epochs=20, batch_size=100, validation_split=0.2, epochs_ltn=5, **kwargs):
         """
@@ -601,7 +596,7 @@ def create_ltn_classes(base_class, row_values, target_module):
             }
         )
         setattr(target_module, class_name, new_class)  # Register to actual module
-        bpic13_ltn_row_classes.append(new_class)
+        paper_ltn_row_classes.append(new_class)
 
 # Factory function to create and register classes globally
 def create_leaky_classes(base_class, leaky_values, target_module):
@@ -618,7 +613,16 @@ def create_leaky_classes(base_class, leaky_values, target_module):
             }
         )
         setattr(target_module, class_name, new_class)  # Register to actual module
-        bpic13_leaky_row_classes.append(new_class)
+        paper_leaky_row_classes.append(new_class)
 # Create and register the classes
-create_ltn_classes(Bpic13LTNFROZEN, bpic13_ltn_class_row_values, sys.modules[__name__])
-create_leaky_classes(Bpic13DAE, bpic13_leaky_class_row_values, sys.modules[__name__])
+create_ltn_classes(PaperLTNFROZEN, paper_ltn_class_row_values, sys.modules[__name__])
+create_leaky_classes(PaperDAE, paper_leaky_class_row_values, sys.modules[__name__])
+
+
+
+# class PaperLTNFROZEN_25(PaperLTNFROZEN):
+#     """Implements a denoising autoencoder based anomaly detection algorithm."""
+
+#     abbreviation = 'paperltnfrozen_10'
+#     name = 'PaperLTNFROZEN_10'
+#     ltn_rows = 25 # rows to use for LTN training

@@ -27,8 +27,10 @@ from april.anomalydetection.autoencoder import *
 # from april.anomalydetection.largeencoder import *
 # from april.anomalydetection.hugeencoder import *
 # from april.anomalydetection.giganticencoder import *
-# from april.anomalydetection.wideencoder import *
-from april.anomalydetection.bpic13encoder import *
+from april.anomalydetection.wideencoder import *
+# from april.anomalydetection.bpic13encoder import *
+# from april.anomalydetection.bpic17encoder import *
+
 
 
 

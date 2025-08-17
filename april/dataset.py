@@ -289,6 +289,7 @@ class Dataset(object):
         if self._attribute_dims is None:
             self._attribute_dims = np.asarray([f.max() if t == AttributeType.CATEGORICAL else 1 for f, t in
                                                zip(self._features, self.attribute_types)])
+        print(self.dataset_name, self._attribute_dims)
         return self._attribute_dims
 
     @property

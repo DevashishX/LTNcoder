@@ -25,19 +25,19 @@ if len(physical_devices) > 0:
 import ltn
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
 
-ltn_rows_file = 'bpic13_ltn_rows.pkl'
-bpic13_ltn_class_row_values = [10, 25] + list(range(50, 301, 50))
-# bpic13_ltn_class_row_values = [10, 25]
-bpic13_ltn_row_classes = []
-bpic13_leaky_class_row_values = [10, 25] + list(range(50, 301, 50))
-# bpic13_leaky_class_row_values = [10, 25]
-bpic13_leaky_row_classes = []
+ltn_rows_file = 'bpic17_ltn_rows.pkl'
+bpic17_ltn_class_row_values = [10, 25] + list(range(50, 301, 50))
+# bpic17_ltn_class_row_values = [10, 25]
+bpic17_ltn_row_classes = []
+bpic17_leaky_class_row_values = [10, 25] + list(range(50, 301, 50))
+# bpic17_leaky_class_row_values = [10, 25]
+bpic17_leaky_row_classes = []
 
-class Bpic13DAE(NNAnomalyDetector):
+class Bpic17DAE(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'bpic13dae'
-    name = f'Bpic13DAE'
+    abbreviation = f'bpic17dae'
+    name = f'Bpic17DAE'
     leaky_ltn_rows = 0 # leaked rows from the LTN dataset
 
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
@@ -54,7 +54,7 @@ class Bpic13DAE(NNAnomalyDetector):
 
     def __init__(self, model=None):
         """Initialize DAE model."""
-        super(Bpic13DAE, self).__init__(model=model)
+        super(Bpic17DAE, self).__init__(model=model)
 
     @classmethod
     def model_fn(cls, dataset, **kwargs):
@@ -166,11 +166,11 @@ class Bpic13DAE(NNAnomalyDetector):
 
         return AnomalyDetectionResult(scores=scores)
 
-class Bpic13LTN(NNAnomalyDetector):
+class Bpic17LTN(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'Bpic13ltn'
-    name = f'Bpic13LTN'
+    abbreviation = f'Bpic17ltn'
+    name = f'Bpic17LTN'
     ltn_rows = 351 # rows to use for LTN training
     # ltn_fraction = 1.0 # fraction of the dataset to use for LTN training
     
@@ -187,7 +187,7 @@ class Bpic13LTN(NNAnomalyDetector):
                   noise=None)
 
     def __init__(self, model=None):
-        super(Bpic13LTN, self).__init__(model=model)
+        super(Bpic17LTN, self).__init__(model=model)
 
     @staticmethod
     def model_fn(dataset, **kwargs):
@@ -506,14 +506,14 @@ class Bpic13LTN(NNAnomalyDetector):
 
         return AnomalyDetectionResult(scores=scores)
 
-class Bpic13LTNFROZEN(Bpic13LTN):
+class Bpic17LTNFROZEN(Bpic17LTN):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = f'bpic13ltnfrozen'
-    name = f'Bpic13LTNFROZEN'
+    abbreviation = f'bpic17ltnfrozen'
+    name = f'Bpic17LTNFROZEN'
 
     def __init__(self, model=None):
-        super(Bpic13LTNFROZEN, self).__init__(model=model)
+        super(Bpic17LTNFROZEN, self).__init__(model=model)
 
     def fit(self, dataset, epochs=20, batch_size=100, validation_split=0.2, epochs_ltn=5, **kwargs):
         """
@@ -601,7 +601,7 @@ def create_ltn_classes(base_class, row_values, target_module):
             }
         )
         setattr(target_module, class_name, new_class)  # Register to actual module
-        bpic13_ltn_row_classes.append(new_class)
+        bpic17_ltn_row_classes.append(new_class)
 
 # Factory function to create and register classes globally
 def create_leaky_classes(base_class, leaky_values, target_module):
@@ -618,7 +618,7 @@ def create_leaky_classes(base_class, leaky_values, target_module):
             }
         )
         setattr(target_module, class_name, new_class)  # Register to actual module
-        bpic13_leaky_row_classes.append(new_class)
+        bpic17_leaky_row_classes.append(new_class)
 # Create and register the classes
-create_ltn_classes(Bpic13LTNFROZEN, bpic13_ltn_class_row_values, sys.modules[__name__])
-create_leaky_classes(Bpic13DAE, bpic13_leaky_class_row_values, sys.modules[__name__])
+create_ltn_classes(Bpic17LTNFROZEN, bpic17_ltn_class_row_values, sys.modules[__name__])
+create_leaky_classes(Bpic17DAE, bpic17_leaky_class_row_values, sys.modules[__name__])

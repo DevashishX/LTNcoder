@@ -70,6 +70,8 @@ class AxiomBuilder:
         
         #P2P Axioms
         #Response[Approve PO 2, Release PO]
+        # "Response[Release PR, Pay] | |"
+        # axioms.append(self.response("Release PR", "Pay", traces, training))
         # axioms.append(self.response("Approve PO 2", "Release PO", traces, training))
         
         #test Axioms
@@ -104,11 +106,17 @@ class AxiomBuilder:
         
         # wide dataset
         # Responded Existence[Activity Q, Activity O]
-        # axioms.append(self.responded_existence("Activity Q", "Activity O", traces, training))
+        axioms.append(self.responded_existence("Activity Q", "Activity O", traces, training))
         
         # bpic13 dataset
         # Responded Existence[Accepted+Wait, Completed+Closed]
-        axioms.append(self.responded_existence("Accepted+Wait", "Completed+Closed", traces, training))
+        # axioms.append(self.responded_existence("Accepted+Wait", "Completed+Closed", traces, training))
+        
+        # bpic17 dataset
+        # Responded Existence[O_Accepted, W_Validate application]
+        # axioms.append(self.responded_existence("O_Accepted", "W_Validate application", traces, training))
+
+
 
         return axioms
     

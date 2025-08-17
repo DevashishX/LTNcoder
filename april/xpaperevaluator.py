@@ -38,7 +38,7 @@ from april.processmining import Case
 from april.processmining import Event
 from april.processmining.log import EventLog
 
-eval_ltn_rows_file = 'paper_ltn_rows.pkl'
+
 class Evaluator(object):
     def __init__(self, model):
         if not isinstance(model, ModelFile):
@@ -49,13 +49,12 @@ class Evaluator(object):
 
         self.model_name = self.model.name
         self.eventlog_name = self.model.event_log_name
-        print(f"Loading model {self.model_name} / {self.model} for event log {self.eventlog_name} at path {self.model_file}")
+        print(f"Loading model {self.model_name} for event log {self.eventlog_name}")
         self.process_model_name = self.model.model
         self.noise = self.model.p
         self.dataset_id = self.model.id
         self.model_date = self.model.date
         self.ad_ = AD.get(self.model.ad)()
-        print(f"Self.ad_: {self.ad_}")
 
         self._dataset = None
         self._result = None
@@ -64,9 +63,8 @@ class Evaluator(object):
         self._classification = None
 
         # Load ltn rows
-        with open(eval_ltn_rows_file, 'rb') as f:
+        with open('paper_ltn_rows.pkl', 'rb') as f:
             self.ltn_rows = pickle.load(f)
-        # with open(r"D:\LTNcoder\.out\decl\p2p_ltn_rows.pkl", 'rb') as f:
 
         import warnings
         warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
@@ -115,8 +113,8 @@ class Evaluator(object):
         """
         all_indices = set(range(len(full_dataset.flat_onehot_features_2d)))
         common_indices = sorted(list(all_indices.intersection(self.ltn_rows)))
-        print(f"Filtering dataset to {len(common_indices)} LTN rows.")
-        print(f"Indices: {common_indices}")
+        # print(f"Filtering dataset to {len(common_indices)} LTN rows.")
+        # print(f"Indices: {common_indices}")
 
         # Subset the dataset
         filtered_dataset = full_dataset
@@ -139,19 +137,14 @@ class Evaluator(object):
     def result(self):
         if self._result is None:
             if self.model.result_file.exists():
-                print(f"Loading anomaly detection result ")
                 self._result = self._load_result_from_cache(self.model.result_file)
             else:
                 self._result = self.ad.detect(self.dataset)
-                print(f"Anomaly detection result for {self.model_name} on {self.eventlog_name} "
-                      f"with {self.ad.abbreviation} saved to {self.model.result_file}")
-                print(f"self.result.scores: {self.result.scores}")
                 from april.anomalydetection import NNAnomalyDetector
                 if isinstance(self.ad, NNAnomalyDetector):
                     import keras as ks
                     ks.backend.clear_session()
                 self._cache_result(self.model.result_file, self.result)
-        print(f"self._result: {self._result}")
         return self._result
 
     def evaluate(self, base=None, mode=None, strategy=None, heuristic=None, normalization=None, go_backwards=False,

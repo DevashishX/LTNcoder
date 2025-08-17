@@ -25,16 +25,19 @@ if len(physical_devices) > 0:
 import ltn
 formula_aggregator = ltn.Wrapper_Formula_Aggregator(ltn.fuzzy_ops.Aggreg_pMeanError(p=2))
 
-paper_ltn_class_row_values = [10, 25] + list(range(50, 401, 50))
+ltn_rows_file = 'paper_ltn_rows.pkl'
+paper_ltn_class_row_values = [10, 25] + list(range(50, 301, 50))
+# paper_ltn_class_row_values = [10, 25]
 paper_ltn_row_classes = []
-paper_leaky_class_row_values = [10, 25] + list(range(50, 401, 50))
+paper_leaky_class_row_values = [10, 25] + list(range(50, 301, 50))
+# paper_leaky_class_row_values = [10, 25]
 paper_leaky_row_classes = []
 
 class PaperDAE(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = 'paperdae'
-    name = 'PaperDAE'
+    abbreviation = f'paperdae'
+    name = f'PaperDAE'
     leaky_ltn_rows = 0 # leaked rows from the LTN dataset
 
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
@@ -62,7 +65,7 @@ class PaperDAE(NNAnomalyDetector):
         import pickle
 
         # Load ltn rows
-        with open('paper_ltn_rows.pkl', 'rb') as f:
+        with open(ltn_rows_file, 'rb') as f:
             ltn_rows = pickle.load(f)
             # print(ltn_rows)
             # print(f"Length of LTN rows which will be excluded: {len(ltn_rows)}")
@@ -166,9 +169,9 @@ class PaperDAE(NNAnomalyDetector):
 class PaperLTN(NNAnomalyDetector):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = 'paperltn'
-    name = 'PaperLTN'
-    ltn_rows = 500 # rows to use for LTN training
+    abbreviation = f'Paperltn'
+    name = f'PaperLTN'
+    ltn_rows = 351 # rows to use for LTN training
     # ltn_fraction = 1.0 # fraction of the dataset to use for LTN training
     
     supported_heuristics = [Heuristic.BEST, Heuristic.ELBOW_DOWN, Heuristic.ELBOW_UP,
@@ -298,6 +301,8 @@ class PaperLTN(NNAnomalyDetector):
         dataset_user_mapping = dict(zip(dataset.encoders["user"].classes_, dataset.encoders["user"].transform(dataset.encoders["user"].classes_)))
         for user, mapping in dataset_user_mapping.items():
             dataset_user_mapping[user] = ltn.Constant(mapping, trainable=False)
+        # print(f"Activity constants: {dataset_activity_mapping}")
+        # print(f"User constants: {dataset_user_mapping}")
         self.activity_constants = dataset_activity_mapping
         self.user_constants = dataset_user_mapping
         return self.activity_constants, self.user_constants
@@ -338,7 +343,7 @@ class PaperLTN(NNAnomalyDetector):
             x_one_hot_2d_LTN: Rows in dataset.flat_onehot_features_2d with the indexes in ltn_rows.
         """
         # Load the ltn rows from the pickle file
-        with open('paper_ltn_rows.pkl', 'rb') as f:
+        with open(ltn_rows_file, 'rb') as f:
             ltn_rows = pickle.load(f)
         
         # Remove anomaly_indices from ltn_rows
@@ -504,8 +509,8 @@ class PaperLTN(NNAnomalyDetector):
 class PaperLTNFROZEN(PaperLTN):
     """Implements a denoising autoencoder based anomaly detection algorithm."""
 
-    abbreviation = 'paperltnfrozen'
-    name = 'PaperLTNFROZEN'
+    abbreviation = f'paperltnfrozen'
+    name = f'PaperLTNFROZEN'
 
     def __init__(self, model=None):
         super(PaperLTNFROZEN, self).__init__(model=model)
@@ -617,12 +622,3 @@ def create_leaky_classes(base_class, leaky_values, target_module):
 # Create and register the classes
 create_ltn_classes(PaperLTNFROZEN, paper_ltn_class_row_values, sys.modules[__name__])
 create_leaky_classes(PaperDAE, paper_leaky_class_row_values, sys.modules[__name__])
-
-
-
-# class PaperLTNFROZEN_25(PaperLTNFROZEN):
-#     """Implements a denoising autoencoder based anomaly detection algorithm."""
-
-#     abbreviation = 'paperltnfrozen_10'
-#     name = 'PaperLTNFROZEN_10'
-#     ltn_rows = 25 # rows to use for LTN training
