@@ -3,10 +3,7 @@
 ## Introduction
 
 Recent developments in the field of neuro-
-symbolic AI have introduced Logic Tensor Networks (LTN) as a means to inte-
-grate symbolic knowledge into neural networks using real-valued logic. In this
-work, we propose a neuro-symbolic approach that integrates domain knowl-
-edge into neural anomaly detection using LTN and Declare constraints. 
+symbolic AI have introduced Logic Tensor Networks (LTN) as a means to integrate symbolic knowledge into neural networks using real-valued logic. In this work, we propose a neuro-symbolic approach that integrates domain knowledge into neural anomaly detection using LTN and Declare constraints. 
 
 ![LTN learning setup](./Autoencoder_LTN_learning.png)
 
