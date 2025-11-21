@@ -160,9 +160,16 @@ cython_debug/
 paper3.1_conformance_results.pkl
 bpic12_5000_conformance_results.pkl
 *.pkl
+*.svg
+*.png
+*.jpg
+*.decl
+Linux*
 .out
 .res
 /.out/.cache
 /.out/models
 /.out/models
 .out/plots_backup
+04_visualizations_paper.ipynb
+04_visualizations_thesis.ipynb
